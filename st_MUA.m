@@ -13,6 +13,10 @@
 
 % Output:
 %         MUA : a matrix of MUAs where rows denote each spike triggered MUA
+% How to call Example :
+%         WB =randn(32000,1);
+%         Spks =randi(32000,30);
+%         MUA=st_MUA(WB,Spks);
 
 %%%%%%%%%%%%%%%%%-------------------%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%% Kianoush Banaie Boroujeni 2021 %%%%%%%%%%%%%%
