@@ -1,10 +1,9 @@
 # Routing_Dynamic
-This set of scripts are used for analysis of the data used in the Neuron paper:
+The following collection of scripts is utilized for analyzing the data featured in the 2023 Neuron paper titled "Routing States Transition During Oscillatory Bursts and Attentional Selection," authored by Kianoush Banaie Boroujeni and Thilo Womelsdorf:
 
-**"Routing States Transition During Oscillatory Bursts and Attentional Selection"**
-by Kianoush Banaie Boroujeni and Thilo Womelsdorf 2023
+stMUA: This script computes the Spike-triggered Multiunit processing for a set of spike times and locations on a multiunit channel.
+Modeling: This script contains the MATLAB code used to generate the spike-LFP model of interacting spiking networks.
+Burst Detection: This script is used for identifying narrow-band LFP bursts.
 
-stMUA: Calculate the Spike triggered Multiunit processing for a set of spike times/locations of a channel on a multiunit channel
-Modeling: Contains the matlab script used for generating spike-LFP model of the interacting spiking networks
-Burst Detection: Used for detecting narrow-band LFP bursts:
+
 
