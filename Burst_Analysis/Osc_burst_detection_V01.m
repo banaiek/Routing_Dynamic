@@ -4,7 +4,6 @@
 %**************************
 
 function [out]=Osc_burst_detection_V01(data,time,Fsin,Par)
-
 %parameters
 Fs=Par.fds; %down sample freq
 lpf=Par.lpf; % low-pass filter freq
@@ -24,19 +23,13 @@ yin=data;
 L1=length(y);
 
 
-Band_Passed_F=nan(Nb,L1); %band-passed signal
-Logical_P=nan(Nb,L1); %logical burst portion
-Wrap=nan(Nb,L1); %warp of bp signal
-ThPS=nan(Nb,L1); %primary threshold passed
-Phase_bp=nan(Nb,L1); %Phase of band passed signal
-
 for fr=1:Nb
     clearvars -except fr Phase_bp ThPS Wrap Logical_P Band_Passed_F lpf L1 y yds Time Nb Fband Par Fs out
     NC=Par.NC(fr); %min number of prominent cycles
     mCs=Par.mCs(fr);
     Csep=Par.Csep(fr); %seperating min cycles
     MaxCycl=Par.MaxCycl(fr); %Max cycle on each side
-    bp=bandpass(y,Fband(fr,:),Fs);
+    bp=z_Phase_bp_01(y,Fband(fr,:),Fs);
     hy=hilbert(bp);
     Ph_y = atan2(imag(hy),real(hy));
 
@@ -50,43 +43,50 @@ for fr=1:Nb
     R=Abp(2:end-1);
     peaks=find(R>R1 & R>R2)+1;
 
-    P_V(peaks)=Abp(peaks);
+    peak_Values(peaks)=Abp(peaks);
 
-    %% Median Filtering
-    WL=round(NC*Fs/Cf);
-    mWL=round(mCs*Fs/Cf);
-    hWL=round(Fs/Cf);
-    M_Abp=abs(hy);
+
+   %% Phase discontinuity
+   d_phase = diff(Ph_y);
+   dX_unwrapped = unwrap(d_phase);
+   threshold = pi;
+   Ph_discontinuity = [0,(abs(dX_unwrapped) > threshold)];
+
+    %% Setting the window size
+    WL = round(NC*Fs/Cf); % Window length for amp. conv.
+    mWL = round(mCs*Fs/Cf); %min window length
+    hWL = round(Fs/Cf); % mean window length
+    Ana_bp=abs(hy);
 
     %% RMS thresholding and min prom. cycle detection
-    Wrp=M_Abp;
-    abp=abs(M_Abp);
-    M_Abp=M_Abp.^2;
-    Med_abp=nanmean(M_Abp);
-    labp=abp(abp<Med_abp);
-    diffSD =((nanstd(labp)/sqrt(1-2/pi))-(nanmean(labp)/(sqrt(2)/pi)))/sqrt(length(P_V)/2);
-    habp=abp(abp<Med_abp);
-    sd=min(nanstd(labp),nanstd(habp));
-    rms1=Med_abp+3.3*nanstd(labp);%+2*nanstd(P_V)/sqrt(length(P_V));
-    rms2=Med_abp+3.3*nanstd(habp);
-    A_Pks=findpeaks(M_Abp);
-    Pk_tr=nanmean(A_Pks)+2*nanstd(A_Pks);
-    [~,locs] = findpeaks(-M_Abp);
-    D_locs=abs(diff(locs));
-    W_Thr=min(nanmedian(D_locs),mWL);
-    mWL=W_Thr;
+    Wrp=Ana_bp;
+    abs_bp=abs(Ana_bp); % abs Ana. signal amp.
+    
+    E_Ana_bp=Ana_bp.^2; % Energy
 
-    rms=min(rms1,rms2);
-    rmst=2*(nanmean(P_V.^2));
+    Med_abp=sqrt(nanmean(E_Ana_bp));
+    labp=abs_bp(abs_bp<Med_abp);
+    habp=abs_bp(abs_bp<Med_abp);
+    rms1=Med_abp+3.3*nanstd(labp);
+    rms2=Med_abp+3.3*nanstd(habp);
+    
+    A_Pks=findpeaks(E_Ana_bp);
+    Pk_tr=nanmean(A_Pks)+nanstd(A_Pks); % Setting a peak threshold of one SD above the mean
+    [~,locs] = findpeaks(-E_Ana_bp);
+    D_locs=abs(diff(locs));
+    W_Thr = min(nanmedian(D_locs),mWL); % adjusted window threshold 
+    
+
+    rms = min(rms1,rms2);
+    rmst = 2*(nanmedian(peak_Values.^2)); % peak Energy threshold of 2 RMS
+
     A=nan(size(bp));
     A2=nan(size(bp));
-    A2(M_Abp-Pk_tr>0)=1;
-    A(M_Abp-1*rms>0 & M_Abp-rmst>0 )=1; %logical value of threshold passed signal
+    A2(E_Ana_bp-Pk_tr>0)=1;
+    A(Wrp-1*rms>0 & E_Ana_bp-rmst>0 & A2>0 & ~Ph_discontinuity )=1; %logical value of threshold passed signal
     WC=ones(WL,1)/(WL);
-    WL2=round(WL/2);
-    WC2=ones(WL2,1)/(WL2);
 
-    DOs1=(conv(A.*M_Abp,WC,'same'));
+    DOs1=(conv(A.*E_Ana_bp,WC,'same'));
     D1=DOs1(1:end-2);
     D2=DOs1(2:end-1);
     D3=DOs1(3:end);
@@ -113,40 +113,19 @@ for fr=1:Nb
 
     % Portions with valid oscillation
 
-    A_O=nan(size(bp));
     logic_p=zeros(size(bp));
 
-    for i=1:length(OsC)
-
-        A_O(max(1,OsC(i)-MaxCycl*hWL):min(OsC(i)+MaxCycl*hWL,L1))=1;
-    end
-
-    A_OS=A_O.*A; % logical burst portions
 
 
 
-    dPh_y=diff(Ph_y);
-    [~,h]=findpeaks(abs(dPh_y),'Threshold',pi/2,'MinPeakDistance',1);
-    h(h>L1-4 | h<4)=[];
-    for inp=1:length(h)
-        dPh_y(h(inp)-2:h(inp)+2)=(dPh_y(h(inp)-3)+dPh_y(h(inp)+3))/2;
-    end
-    fdPh_y=dPh_y;
-    bk=find(abs(fdPh_y(2:end-1))>pi/2)+1;
-
-    fdPh_y(bk)=(fdPh_y(bk+1)+fdPh_y(bk-1))/2;
-    Pt=(nanstd((fdPh_y)));
-    fdPh_y=smooth(fdPh_y,3);
-    [~,Phase_disc]=findpeaks(abs(diff(fdPh_y)),'MinPeakProminence',Pt,'MinPeakDistance',1);
-    Ph_disc=zeros(size(bp));
-    Ph_disc(Phase_disc)=1;
 
     NOsc=length(OsC);
     OStp=[];
 
 
-    cutoff=max(rmst.^2,Med_abp);
-    Wrp2=M_Abp-cutoff;
+    cutoff = max(rmst,Med_abp.^2);
+    Wrp2 = E_Ana_bp-cutoff;
+    
     for i=1:NOsc
         t1=max(1,OsC(i)-MaxCycl*hWL); %starting limit of Burst
         t2=min(L1,OsC(i)+MaxCycl*hWL); %end limit of Burst
@@ -183,19 +162,18 @@ for fr=1:Nb
             end
         end
 
-        if OStp(i,2)-OStp(i,1)>=mWL
+        if OStp(i,2)-OStp(i,1)>=W_Thr
             logic_p(OStp(i,1):OStp(i,2))=1;
         end
     end
 
     L_osc=diff(OStp,[],2);
-    inv_osc=find(L_osc<mWL);
+    inv_osc=find(L_osc<W_Thr);
     OStp(inv_osc,:)=[];
     OsC(inv_osc)=[];
 
 
     if ~isempty(OStp)
-        OS_points{fr}=OStp;
         OS_times{fr}(:,1)=Time(OStp(:,1));
         OS_times{fr}(:,2)=Time(OStp(:,2));
     else
@@ -214,5 +192,4 @@ for fr=1:Nb
     out.OS_StartEndPoints{fr}=OStp;
     out.NumC(fr)=NOsc;
     out.Os_CM{fr}=Wrp(OsC)/nanmean(Wrp);
-
 end
