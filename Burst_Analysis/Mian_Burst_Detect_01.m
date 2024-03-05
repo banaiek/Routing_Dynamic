@@ -4,7 +4,7 @@
 % Par.fds - frequency at which the input signal should be downsampled.
 % Par.lpf - cutoff frequency for the low-pass filter.
 % Par.Fband - defines narrow frequency bands for burst detection. For example, [1.5 4; 4 8; 6 12; 8 16; 15 25 ;65 115].
-% Par.NC - sets the minimum number of prominent cycles before burst detection.
+% Par.NC - sets the moothing cycle factor (depending on the frequency band-width between 1 to 2).
 % Par.mCs - establishes the minimum number of prominent cycles following detection.
 % Par.Csep - denotes the minimum separating cycles.
 % Par.MaxCycl - sets the maximum number of cycles on each side of the burst.
