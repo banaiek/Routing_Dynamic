@@ -6,7 +6,14 @@
 % spike_In : a vector of spike indices (for a given trial)
 % WB_In : wideband signal from a simultaneously recorded channel
 % Par : Input parameters instead of default values:
-    
+% par = struct();
+% par.Fs = 3E4; % Wideband signal sampling rate (default)
+% par.fband = [800 3000]; %bandPass cutOffs (default)
+% par.slide_Step = 1; % sliding time step in ms (default)
+% par.window_Length = 100; % time around spikes in ms (default)
+% par.window_Time = 2.5; % Window length to compute MUA around each step in
+% ms (default)
+% par.per_post_Window = 20;  % Size for pre and post in ms (default)
 
 %%%%  Oututs:
 % out.Lead_lag_Val : a vector of lead-lag values in (default) 20ms around spikes
